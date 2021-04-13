@@ -101,6 +101,7 @@ void *start_elevator(void *arg) {
                    elevator_open_door, elevator_close_door);
     sched_yield();
   }
+  return NULL;
 }
 
 /* This is an internal struct used by the enforcement system
@@ -213,6 +214,7 @@ void *start_passenger(void *arg) {
     usleep(100);
     //		usleep(DELAY); // sleep for some time
   }
+  return NULL;
 }
 
 void *draw_state(void *ptr) {
@@ -248,15 +250,12 @@ void *draw_state(void *ptr) {
     fflush(stdout);
     usleep(DELAY);
   }
+  return NULL;
 }
-
-char screenbuf[10000];
 
 int main(int argc, char **argv) {
   struct timeval before;
   gettimeofday(&before, 0);
-
-  setvbuf(stdout, screenbuf, _IOFBF, 10000);
 
   scheduler_init();
 
@@ -291,4 +290,6 @@ int main(int argc, char **argv) {
   int ms = (after.tv_sec - before.tv_sec) * 1000 +
            (after.tv_usec - before.tv_usec) / 1000;
   log(0, "Total time elapsed: %d ms, %d slots\n", ms, ms * 1000 / DELAY);
+
+  return 0;
 }
