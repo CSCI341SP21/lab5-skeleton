@@ -259,28 +259,28 @@ int main(int argc, char **argv) {
 
   scheduler_init();
 
-  pthread_t passenger_t[PASSENGERS];
+  pthread_t passengers[PASSENGERS];
   for (size_t i = 0; i < PASSENGERS; i++) {
-    pthread_create(&passenger_t[i], NULL, start_passenger, (void *)i);
+    pthread_create(&passengers[i], NULL, start_passenger, (void *)i);
   }
   usleep(100000);
 
-  pthread_t elevator_t[ELEVATORS];
+  pthread_t elevators[ELEVATORS];
   for (size_t i = 0; i < ELEVATORS; i++) {
-    pthread_create(&elevator_t[i], NULL, start_elevator, (void *)i);
+    pthread_create(&elevators[i], NULL, start_elevator, (void *)i);
   }
 
 #ifndef NODISPLAY
-  pthread_t draw_t;
-  pthread_create(&draw_t, NULL, draw_state, NULL);
+  pthread_t draw;
+  pthread_create(&draw, NULL, draw_state, NULL);
 #endif
 
   /* wait for all trips to complete */
   for (int i = 0; i < PASSENGERS; i++)
-    pthread_join(passenger_t[i], NULL);
+    pthread_join(passengers[i], NULL);
   stop = 1;
   for (int i = 0; i < ELEVATORS; i++)
-    pthread_join(elevator_t[i], NULL);
+    pthread_join(elevators[i], NULL);
 
   struct timeval after;
   gettimeofday(&after, 0);
