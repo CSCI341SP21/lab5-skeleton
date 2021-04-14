@@ -2,28 +2,32 @@
 #include <errno.h>
 #include <pthread.h>
 #include <sched.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
 
-#define LOCK(lock) do { \
-  if (pthread_mutex_lock((lock)) < 0) { \
-    fprintf(stderr, "%s:%d %s: %s\n", __FILE__, __LINE__, __FUNCTION__, strerror(errno)); \
-    exit(2); \
-  } \
-} while (false)
+#define LOCK(lock)                                                             \
+  do {                                                                         \
+    if (pthread_mutex_lock((lock)) < 0) {                                      \
+      fprintf(stderr, "%s:%d %s: %s\n", __FILE__, __LINE__, __FUNCTION__,      \
+              strerror(errno));                                                \
+      exit(2);                                                                 \
+    }                                                                          \
+  } while (false)
 
-#define UNLOCK(lock) do { \
-  if (pthread_mutex_unlock((lock)) < 0) { \
-    fprintf(stderr, "%s:%d %s: %s\n", __FILE__, __LINE__, __FUNCTION__, strerror(errno)); \
-    exit(2); \
-  } \
-} while (false)
+#define UNLOCK(lock)                                                           \
+  do {                                                                         \
+    if (pthread_mutex_unlock((lock)) < 0) {                                    \
+      fprintf(stderr, "%s:%d %s: %s\n", __FILE__, __LINE__, __FUNCTION__,      \
+              strerror(errno));                                                \
+      exit(2);                                                                 \
+    }                                                                          \
+  } while (false)
 
 // when stop == true, all threads quit voluntarily
 static volatile atomic_bool stop;
@@ -142,8 +146,8 @@ static void *start_elevator(void *arg) {
     e->seqno++;
     int floor = e->floor;
     UNLOCK(&e->lock);
-    elevator_ready(elevator, floor, elevator_move_direction,
-                   elevator_open_door, elevator_close_door);
+    elevator_ready(elevator, floor, elevator_move_direction, elevator_open_door,
+                   elevator_close_door);
     sched_yield();
   }
 
@@ -382,7 +386,7 @@ int main(int argc, char **argv) {
   atomic_store(&stop, true);
   for (int i = 0; i < ELEVATORS; i++)
     pthread_join(elevator_threads[i], NULL);
-  
+
 #ifndef NODISPLAY
   pthread_join(draw, NULL);
 #endif
