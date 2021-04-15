@@ -11,6 +11,13 @@
 #include <time.h>
 #include <unistd.h>
 
+// The only interaction between threads in this file is between the display
+// thread and all of the other threads. So if there is no display, there's no
+// need to lock.
+#ifdef NODISPLAY
+#define LOCK(lock) (void)(lock)
+#define UNLOCK(lock) (void)(lock)
+#else
 #define LOCK(lock)                                                             \
   do {                                                                         \
     if (pthread_mutex_lock((lock)) < 0) {                                      \
@@ -28,6 +35,7 @@
       exit(2);                                                                 \
     }                                                                          \
   } while (false)
+#endif
 
 // when stop == true, all threads quit voluntarily
 static volatile atomic_bool stop;
@@ -198,7 +206,7 @@ static void passenger_enter(int passenger, int elevator) {
 
   log(6, "Passenger %d got on elevator %d at %d, requested %d\n",
       passengers[passenger].id, elevator, passengers[passenger].from_floor,
-      elevators[elevator].floor);
+      passengers[passenger].to_floor);
   elevators[elevator].passengers++;
   passengers[passenger].in_elevator = elevator;
   passengers[passenger].state = ENTERED;
@@ -262,9 +270,12 @@ static void *start_passenger(void *arg) {
   UNLOCK(&p->lock);
   int trips = TRIPS_PER_PASSENGER;
   while (!atomic_load(&stop) && trips-- > 0) {
-    int to_floor = random() % FLOORS;
     LOCK(&p->lock);
+    int to_floor;
     int from_floor = p->from_floor;
+    do {
+      to_floor = random() % FLOORS;
+    } while (to_floor == from_floor);
     p->to_floor = to_floor;
     passengers[passenger].state = WAITING;
     UNLOCK(&p->lock);
@@ -291,9 +302,10 @@ static void *start_passenger(void *arg) {
   return NULL;
 }
 
+#ifndef NODISPLAY
 static void *draw_state(void *ptr) {
   while (!atomic_load(&stop)) {
-    printf("\033[2J\033[1;1H");
+    printf("\033[2J\033[H");
     for (int floor = FLOORS - 1; floor >= 0; floor--) {
       printf("%d\t", floor);
       for (int el = 0; el < ELEVATORS; el++) {
@@ -338,6 +350,7 @@ static void *draw_state(void *ptr) {
   }
   return NULL;
 }
+#endif
 
 int main(int argc, char **argv) {
   pthread_mutexattr_t mutex_attr;
@@ -376,6 +389,11 @@ int main(int argc, char **argv) {
   }
 
 #ifndef NODISPLAY
+  if (setvbuf(stdout, NULL, _IOFBF, 0) < 0) {
+    perror("setvbuf");
+    return 1;
+  }
+
   pthread_t draw;
   pthread_create(&draw, NULL, draw_state, NULL);
 #endif
@@ -394,11 +412,11 @@ int main(int argc, char **argv) {
   struct timeval after;
   gettimeofday(&after, 0);
 
-  log(0, "All %d passengers finished their %d trips each.\n", PASSENGERS,
-      TRIPS_PER_PASSENGER);
+  printf("All %d passengers finished their %d trips each.\n", PASSENGERS,
+         TRIPS_PER_PASSENGER);
   int ms = (after.tv_sec - before.tv_sec) * 1000 +
            (after.tv_usec - before.tv_usec) / 1000;
-  log(0, "Total time elapsed: %d ms, %d slots\n", ms, ms * 1000 / DELAY);
+  printf("Total time elapsed: %d ms, %d slots\n", ms, ms * 1000 / DELAY);
 
   return 0;
 }
