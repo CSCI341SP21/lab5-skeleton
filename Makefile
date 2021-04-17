@@ -1,6 +1,6 @@
 SCHEDULER := lab5.c
 BINARIES := lab5
-CFLAGS := -g --std=c11 -Wall -Werror
+CFLAGS := -g --std=gnu11 -Wall -Werror
 LIBS := -lpthread
 
 .PHONY: all clean burn-in test1 test2 test3
